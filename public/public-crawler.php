@@ -534,12 +534,37 @@ class Nguon_avdbapi_crawler
 
         // Actors - Map to toro_pornstar taxonomy for Eroz theme
         if (isset($data['actor']) && is_array($data['actor'])) {
+            // Chuẩn hóa mảng actor: loại bỏ giá trị rỗng, trim, và chuẩn hóa định dạng
+            $normalized_actors = array();
             foreach ($data['actor'] as $actor) {
-                if (!term_exists($actor, 'toro_pornstar') && $actor != '') {
-                    wp_insert_term($actor, 'toro_pornstar');
+                $actor = trim($actor);
+                if (!empty($actor)) {
+                    // Chuẩn hóa tên: viết hoa đầu từ, loại bỏ ký tự thừa
+                    $actor = ucwords(strtolower($actor));
+                    $actor = preg_replace('/\s+/', ' ', $actor); // Loại bỏ khoảng trắng thừa
+                    $normalized_actors[] = $actor;
                 }
             }
-            wp_set_post_terms($post_id, $data['actor'], 'toro_pornstar', false);
+            // Chỉ xử lý nếu có actor hợp lệ
+            if (!empty($normalized_actors)) {
+                $actor_ids = array();
+                foreach ($normalized_actors as $actor) {
+                    $term = term_exists($actor, 'toro_pornstar');
+                    if (!$term) {
+                        $term = wp_insert_term($actor, 'toro_pornstar');
+                    }
+                    if (is_array($term) && isset($term['term_id'])) {
+                        $actor_ids[] = $term['term_id'];
+                    } elseif (is_numeric($term)) {
+                        $actor_ids[] = $term;
+                    } elseif (is_array($term) && isset($term['term_taxonomy_id'])) {
+                        $actor_ids[] = $term['term_taxonomy_id'];
+                    }
+                }
+                if (!empty($actor_ids)) {
+                    wp_set_post_terms($post_id, $actor_ids, 'toro_pornstar', false);
+                }
+            }
         }
 
         // Thumbnail (featured image) - Map to eroz_meta_src for Eroz theme
